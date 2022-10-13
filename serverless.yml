@@ -1,0 +1,70 @@
+
+service: retoBackNode
+
+frameworkVersion: '3'
+
+custom:
+  tableName: "startWarsDB-table-${self:provider.stage}"
+  dynamodb:
+    start:
+      migrate: true
+  api: "https://swapi.py4e.com/api/planets"
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: dev
+  region: us-east-2
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["UserTable", "Arn"] }
+  environment:
+    START_TABLE: ${self:custom.tableName}
+    APISTARWARS: ${self:custom.api}
+
+plugins:
+  - serverless-offline
+  - serverless-dynamodb-local
+
+functions:
+  api:
+    handler: src/controllers/planetaController.api
+    events:
+      - http:
+          path: planeta/getPlanetaAPI
+          method: get
+  addPlanets:
+    handler: src/controllers/planetaController.addPlanets
+    events:
+      - http:
+          path: planeta/addPlaneta
+          method: post
+  getPlanets:
+    handler: src/controllers/planetaController.getPlanets
+    events:
+      - http:
+          path: planeta/getPlanetas
+          method: get
+resources:
+  Resources:
+    UserTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.tableName}
